@@ -1,0 +1,373 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "LLM Telemetry Chatbot API",
+    "description": "Operational Chatbot and Observability backend.",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/conversations": {
+      "get": {
+        "summary": "Lists conversations",
+        "operationId": "list_conversations",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ConversationResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Creates a new conversation",
+        "operationId": "create_new_conversation",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConversationCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/conversations/{conv_id}": {
+      "delete": {
+        "summary": "Cancels and deletes a conversation",
+        "operationId": "cancel_and_delete_conversation",
+        "parameters": [
+          {
+            "name": "conv_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConversationDeleteResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/conversations/{conv_id}/messages": {
+      "get": {
+        "summary": "Resumes a conversation",
+        "operationId": "get_messages",
+        "parameters": [
+          {
+            "name": "conv_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/MessageResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/conversations/{conv_id}/chat": {
+      "post": {
+        "summary": "Streams back assistant completion chunks",
+        "operationId": "chat_stream",
+        "parameters": [
+          {
+            "name": "conv_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response (Event Source Stream)",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/analytics/metrics": {
+      "get": {
+        "summary": "Computes key performance metrics",
+        "operationId": "get_telemetry_metrics",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/analytics/timeseries": {
+      "get": {
+        "summary": "Retrieves chronological telemetry points",
+        "operationId": "get_telemetry_timeseries",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TimeseriesPointResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/analytics/logs": {
+      "get": {
+        "summary": "Lists the latest raw telemetry logs",
+        "operationId": "get_recent_logs",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TelemetryLogResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ConversationCreate": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "nullable": true
+          }
+        }
+      },
+      "ChatRequest": {
+        "type": "object",
+        "required": ["prompt", "provider", "model"],
+        "properties": {
+          "prompt": { "type": "string" },
+          "provider": { "type": "string" },
+          "model": { "type": "string" }
+        }
+      },
+      "ConversationResponse": {
+        "type": "object",
+        "required": ["id", "title", "created_at", "updated_at"],
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "created_at": { "type": "string" },
+          "updated_at": { "type": "string" }
+        }
+      },
+      "MessageResponse": {
+        "type": "object",
+        "required": ["id", "role", "content", "created_at"],
+        "properties": {
+          "id": { "type": "string" },
+          "role": { "type": "string" },
+          "content": { "type": "string" },
+          "created_at": { "type": "string" }
+        }
+      },
+      "ConversationDeleteResponse": {
+        "type": "object",
+        "required": ["status", "message"],
+        "properties": {
+          "status": { "type": "string" },
+          "message": { "type": "string" }
+        }
+      },
+      "ProviderStats": {
+        "type": "object",
+        "required": ["calls", "errors", "success_rate"],
+        "properties": {
+          "calls": { "type": "integer" },
+          "errors": { "type": "integer" },
+          "success_rate": { "type": "number" }
+        }
+      },
+      "ModelStats": {
+        "type": "object",
+        "required": ["calls", "avg_latency_ms"],
+        "properties": {
+          "calls": { "type": "integer" },
+          "avg_latency_ms": { "type": "integer" }
+        }
+      },
+      "MetricsResponse": {
+        "type": "object",
+        "required": [
+          "total_calls",
+          "success_rate",
+          "avg_latency_ms",
+          "total_tokens",
+          "avg_throughput_tps",
+          "error_rate",
+          "provider_breakdown",
+          "model_breakdown"
+        ],
+        "properties": {
+          "total_calls": { "type": "integer" },
+          "success_rate": { "type": "number" },
+          "avg_latency_ms": { "type": "integer" },
+          "total_tokens": { "type": "integer" },
+          "avg_throughput_tps": { "type": "number" },
+          "error_rate": { "type": "number" },
+          "provider_breakdown": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ProviderStats"
+            }
+          },
+          "model_breakdown": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ModelStats"
+            }
+          }
+        }
+      },
+      "TimeseriesPointResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "timestamp",
+          "latency_ms",
+          "tokens_total",
+          "tokens_prompt",
+          "tokens_completion",
+          "throughput_tps",
+          "status",
+          "model",
+          "provider"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "timestamp": { "type": "string" },
+          "latency_ms": { "type": "integer" },
+          "tokens_total": { "type": "integer" },
+          "tokens_prompt": { "type": "integer" },
+          "tokens_completion": { "type": "integer" },
+          "throughput_tps": { "type": "number" },
+          "status": { "type": "string" },
+          "model": { "type": "string" },
+          "provider": { "type": "string" }
+        }
+      },
+      "TelemetryLogResponse": {
+        "type": "object",
+        "required": [
+          "id",
+          "provider",
+          "model",
+          "status",
+          "latency_ms",
+          "tokens_prompt",
+          "tokens_completion",
+          "tokens_total",
+          "pii_redacted",
+          "metadata",
+          "timestamp"
+        ],
+        "properties": {
+          "id": { "type": "string" },
+          "conversation_id": { "type": "string", "nullable": true },
+          "message_id": { "type": "string", "nullable": true },
+          "provider": { "type": "string" },
+          "model": { "type": "string" },
+          "status": { "type": "string" },
+          "latency_ms": { "type": "integer" },
+          "tokens_prompt": { "type": "integer" },
+          "tokens_completion": { "type": "integer" },
+          "tokens_total": { "type": "integer" },
+          "error_message": { "type": "string", "nullable": true },
+          "pii_redacted": { "type": "boolean" },
+          "metadata": { "type": "object" },
+          "timestamp": { "type": "string" }
+        }
+      }
+    }
+  }
+}
