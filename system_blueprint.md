@@ -51,7 +51,7 @@ graph TD
     LLMClient -->|4. Stream SSE Chunks| UI
 
     %% Observability Ingestion Channel
-    LLMClient -.->|5. Context SDK Trace (0ms Block)| SDK
+    LLMClient -.->|"5. Context SDK Trace (0ms Block)"| SDK
     SDK -.->|6. Async HTTP POST Log| IngestAPI
     IngestAPI -->|7. Persistent AMQP Publish| RMQ
 
