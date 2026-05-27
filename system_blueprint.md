@@ -108,34 +108,34 @@ Below is a comprehensive ledger of every critical system bottleneck identified i
 
 ### Problem 1: Redis Connection Storm
 *   **The Bottleneck**: Originally, the `/api/ws/analytics` WebSocket handler established a new Redis connection and created a Pub/Sub subscribe polling loop per connected browser tab. Under **10,000 concurrent users**, this would open **10,000 TCP connections to Redis**, exhausting file descriptor limits, spiking Redis CPU to 100%, and crashing the server.
-*   **The SDE 3 Fix**: Implemented a **Centralized Broadcaster Pattern** in [main.py](file:///home/phenom/Projects/ollive_assignment/services/chatbot/main.py). Spawned a single global `redis_pubsub_listener` task on startup that maintains **exactly one connection to Redis**. Sockets are registered to a memory set (`active_websockets`), and the background task fans out payloads in-memory. Redis connections are reduced by **99.9%**!
+*   **The  Fix**: Implemented a **Centralized Broadcaster Pattern** in [main.py](file:///home/phenom/Projects/ollive_assignment/services/chatbot/main.py). Spawned a single global `redis_pubsub_listener` task on startup that maintains **exactly one connection to Redis**. Sockets are registered to a memory set (`active_websockets`), and the background task fans out payloads in-memory. Redis connections are reduced by **99.9%**!
 
 ### Problem 2: Database Transaction Session Poisoning
 *   **The Bottleneck**: The background ingestion worker previously reused a single global SQLAlchemy `db_session` indefinitely. Under heavy concurrent loads, a single failed insert or database glitch poisoned the session state, triggering permanent `PendingRollbackError` exceptions and causing subsequent log writes to block or fail.
-*   **The SDE 3 Fix**: Overhauled `run_worker` in [worker.py](file:///home/phenom/Projects/ollive_assignment/services/ingestion/worker.py) to instantiate and close a fresh `SessionLocal()` per individual log iteration inside a tight `try...finally` block. This guarantees database-level transactional isolation and prevents connection leakage.
+*   **The  Fix**: Overhauled `run_worker` in [worker.py](file:///home/phenom/Projects/ollive_assignment/services/ingestion/worker.py) to instantiate and close a fresh `SessionLocal()` per individual log iteration inside a tight `try...finally` block. This guarantees database-level transactional isolation and prevents connection leakage.
 
 ### Problem 3: Broken Kubernetes Environment Resolutions
 *   **The Bottleneck**: The Kubernetes manifests completely omitted all RabbitMQ host, port, user, and password variables, meaning that deploying to a Kubernetes cluster would result in immediate service crashes. Additionally, single replicas formed a Single Point of Failure (SPOF) under load.
-*   **The SDE 3 Fix**: 
+*   **The  Fix**: 
   - Updated [secrets-config.yaml](file:///home/phenom/Projects/ollive_assignment/k8s/secrets-config.yaml) to map RabbitMQ credentials.
   - Linked these ConfigMap and Secret keys under container blocks in [ingestion.yaml](file:///home/phenom/Projects/ollive_assignment/k8s/ingestion.yaml).
   - Scaled `chatbot-api` and `ingestion-worker` deployments to **2 replicas** for high availability and dynamic load balancing.
 
 ### Problem 4: Quadratic Token Inflation ($O(N^2)$)
 *   **The Bottleneck**: As conversations grew, the chatbot API compiled and sent the entire raw historical database payload to the LLM. For long chats, this triggered quadratic token growth, quickly blowing past context limits and creating massive financial API bills.
-*   **The SDE 3 Fix**: Implemented a **Sliding Window Context Cap** in [main.py](file:///home/phenom/Projects/ollive_assignment/services/chatbot/main.py). Capped the active history sent to the LLM to the **last 20 messages** (`CONTEXT_WINDOW_LIMIT = 20`), while safely preserving 100% of messages in PostgreSQL so that the frontend UI still displays the full scrollable chat feed.
+*   **The  Fix**: Implemented a **Sliding Window Context Cap** in [main.py](file:///home/phenom/Projects/ollive_assignment/services/chatbot/main.py). Capped the active history sent to the LLM to the **last 20 messages** (`CONTEXT_WINDOW_LIMIT = 20`), while safely preserving 100% of messages in PostgreSQL so that the frontend UI still displays the full scrollable chat feed.
 
 ### Problem 5: Context Window Memory Loss
 *   **The Bottleneck**: Enforcing a strict sliding window limits token counts, but causes the LLM to "forget" crucial facts mentioned earlier in the chat (e.g. details discussed 30 turns ago).
-*   **The SDE 3 Fix**: Fused a **Zero-Dependency Database RAG engine** alongside the sliding window. Wrote a keyword extractor that queries PostgreSQL using full-text index-ready searches over past messages *outside the sliding window*, pulling relevant factual matches and injecting them as high-priority `"role": "system"` instructions at the top of the prompt payload.
+*   **The  Fix**: Fused a **Zero-Dependency Database RAG engine** alongside the sliding window. Wrote a keyword extractor that queries PostgreSQL using full-text index-ready searches over past messages *outside the sliding window*, pulling relevant factual matches and injecting them as high-priority `"role": "system"` instructions at the top of the prompt payload.
 
 ### Problem 6: Basic & Static Chart Visualizations
 *   **The Problem**: The original telemetry dashboard used basic SVG line curves which were static, lacked gridline divisions, could not support interactive tooltips, and looked unpolished.
-*   **The SDE 3 Fix**: Replaced the sparkline loop with a custom React `<EChartComponent />` in [App.tsx](file:///home/phenom/Projects/ollive_assignment/frontend/src/App.tsx) powered by Apache ECharts, rendering smooth, responsive, GPU-accelerated canvas area charts with interactive dark glass tooltips.
+*   **The  Fix**: Replaced the sparkline loop with a custom React `<EChartComponent />` in [App.tsx](file:///home/phenom/Projects/ollive_assignment/frontend/src/App.tsx) powered by Apache ECharts, rendering smooth, responsive, GPU-accelerated canvas area charts with interactive dark glass tooltips.
 
 ### Problem 7: Absent DB Administration Clients
 *   **The Problem**: Developers and administrators had no visual mechanism to query, inspect, or manage database tables in PostgreSQL.
-*   **The SDE 3 Fix**: Added a dedicated, lightweight **Adminer** database service in [docker-compose.yml](file:///home/phenom/Projects/ollive_assignment/docker-compose.yml) pre-configured to point to the `postgres` container, exposed on port `8085`.
+*   **The  Fix**: Added a dedicated, lightweight **Adminer** database service in [docker-compose.yml](file:///home/phenom/Projects/ollive_assignment/docker-compose.yml) pre-configured to point to the `postgres` container, exposed on port `8085`.
 
 ---
 
